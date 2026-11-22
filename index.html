@@ -87,4 +87,4 @@ async function restoreFile(f){if(!f)return;try{let d=JSON.parse(await f.text());
 function queue(e){return e.orders.slice().sort((a,b)=>a.rank-b.rank||String(a.createdAt||'').localeCompare(String(b.createdAt||''))||a.id.localeCompare(b.id))}
 function allocation(e,order){let amounts=new Map(e.products.map(p=>[p.id,p.bought||0]));for(const o of queue(e)){let assigned=0,total=0;for(const l of o.lines){let n=Math.min(l.q,amounts.get(l.id)||0);amounts.set(l.id,Math.max(0,(amounts.get(l.id)||0)-l.q));total+=l.q;assigned+=n}if(o.id===order.id)return '已分配 '+assigned+' / '+total+(assigned===total?' · 已购齐':assigned?' · 部分已购':' · 待采购')}}
 </script>
-<script src="sync-core.js?v=20261122-prices1"></script><script src="finance-core.js?v=20261122-prices1"></script><script src="pricing.js?v=20261122-prices1"></script><script src="cloud.js?v=20261122-prices1"></script></html>
+<script src="sync-core.js?v=20261122-prices2"></script><script src="finance-core.js?v=20261122-prices2"></script><script src="pricing.js?v=20261122-prices2"></script><script src="cloud.js?v=20261122-prices2"></script></html>
