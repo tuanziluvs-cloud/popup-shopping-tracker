@@ -102,7 +102,7 @@ async function migrateLocal(){
 function showAccount(){
  const box=document.getElementById('account');box.classList.toggle('hide');if(box.classList.contains('hide'))return;
  box.innerHTML=session?'<h2>云端账户</h2><p>'+esc(session.user.email)+'</p><p>'+esc(syncMessage)+'</p><button onclick="syncNow()">立即同步</button> <button onclick="signOut()">退出登录</button>':
- '<h2>登录云同步</h2><p class="muted">电脑和手机使用同一个邮箱账户。每个账户的数据独立且受权限保护。</p><label for="email">邮箱</label><input id="email" type="email" autocomplete="username"><label for="password">密码（至少 8 位）</label><input id="password" type="password" autocomplete="current-password" minlength="8"><p><button class="primary" onclick="authenticate(false)">登录</button> <button onclick="authenticate(true)">注册</button></p><p id="auth-message" role="status"></p><details><summary>邮箱确认后未能返回网页？</summary><p class="muted">若确认链接打开 localhost，请回到此页登录。也可把确认邮件中的完整链接粘贴至下方完成验证。</p><input id="confirm-link" placeholder="邮件确认链接"><button onclick="confirmEmail()">验证邮箱</button></details>';
+ '<h2>登录云同步</h2><p class="muted">电脑和手机使用同一个邮箱账户。每个账户的数据独立且受权限保护。</p><label for="email">邮箱</label><input id="email" type="email" autocomplete="username"><label for="password">密码（至少 8 位）</label><input id="password" type="password" autocomplete="current-password" minlength="8"><p><button class="primary" onclick="authenticate(false)">登录</button> <button onclick="authenticate(true)">注册</button></p><p id="auth-message" role="status"></p><p class="muted">已点击邮件中的确认按钮？请直接在上方输入邮箱和密码并点“登录”。</p><details><summary>备用：用确认邮件链接验证</summary><p class="muted">仅在无法打开确认邮件链接时使用。这里需要邮件中确认按钮的完整 https:// 链接，不能填写邮箱地址。</p><label for="confirm-link">确认邮件中的完整链接</label><input id="confirm-link" type="url" inputmode="url" autocomplete="off" placeholder="https://…/auth/v1/verify?token=…"><button onclick="confirmEmail()">验证确认链接</button></details>';
 }
 async function authenticate(signup){
  const msg=document.getElementById('auth-message'),email=document.getElementById('email').value.trim(),password=document.getElementById('password').value;
@@ -111,9 +111,18 @@ async function authenticate(signup){
  try{const r=await api(signup?'/auth/v1/signup?redirect_to='+encodeURIComponent(location.origin+location.pathname):'/auth/v1/token?grant_type=password',{method:'POST',auth:false,body:{email,password}});
   if(!r.access_token){msg.textContent='注册已提交，请打开邮箱确认邮件后返回登录。';return}
   storeSession(r);document.getElementById('password').value='';document.getElementById('account').classList.add('hide');await loadAccount();
- }catch(err){msg.textContent=err.message}
+ }catch(err){msg.textContent=authErrorMessage(err)}
 }
-async function confirmEmail(){try{const url=new URL(document.getElementById('confirm-link').value),token=url.searchParams.get('token'),type=url.searchParams.get('type');if(!['signup','email'].includes(type)||!token||url.origin!==SB_URL)throw Error('请粘贴本项目发送的完整邮箱确认链接');const r=await api('/auth/v1/verify',{method:'POST',auth:false,body:{token_hash:token,type}});storeSession(r);document.getElementById('account').classList.add('hide');await loadAccount()}catch(err){document.getElementById('auth-message').textContent=err.message}}
+function authErrorMessage(err){
+ const message=err.message||'';
+ if(/invalid login credentials|invalid_credentials/i.test(message))return '邮箱或密码不匹配。已确认邮箱后请点“登录”，并输入注册时的密码。';
+ if(/email not confirmed/i.test(message))return '邮箱尚未确认，请先打开注册确认邮件中的链接，再返回登录。';
+ if(/already registered/i.test(message))return '此邮箱已注册，请点击“登录”。';
+ if(/rate limit|too many requests|security purposes/i.test(message))return '操作过于频繁，请稍后再试，避免连续点击注册。';
+ if(/expired|invalid.*token|otp_expired/i.test(message))return '确认链接已失效或已使用。若之前已经确认，请直接登录。';
+ return message;
+}
+async function confirmEmail(){try{const raw=document.getElementById('confirm-link').value.trim();let url;try{url=new URL(raw)}catch{throw Error('这里需要确认邮件中的完整 https:// 链接，不能填写邮箱地址。邮箱已确认的话，请直接点击上方“登录”。')}const token=url.searchParams.get('token'),type=url.searchParams.get('type');if(!['signup','email'].includes(type)||!token||url.origin!==SB_URL||url.pathname!=='/auth/v1/verify')throw Error('请粘贴本项目发送的完整邮箱确认链接');const r=await api('/auth/v1/verify',{method:'POST',auth:false,body:{token_hash:token,type}});storeSession(r);document.getElementById('account').classList.add('hide');await loadAccount()}catch(err){document.getElementById('auth-message').textContent=authErrorMessage(err)}}
 async function signOut(){if(dirty||syncBusy||conflict)return alert('还有尚未同步的数据，请先完成同步并导出备份。');try{await api('/auth/v1/logout',{method:'POST'})}catch{}storeSession(null);if(releaseAccount){releaseAccount();releaseAccount=null}ownsAccount=true;cacheKey=null;cloudReady=false;db=clone(legacyData);lastSaved=clone(db);current=null;basket={};basketPrices={};editId=null;draftName='';migrationPending=false;document.getElementById('account').classList.add('hide');status('本机保存 · 已退出登录');render()}
 async function bootCloud(){
  try{
