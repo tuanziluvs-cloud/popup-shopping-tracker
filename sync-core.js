@@ -32,6 +32,9 @@ function importLegacy(cloud,legacy){
  for(const source of legacy.events){
   let target=result.events.find(e=>e.id===source.id||(source.presetKind&&e.presetKind===source.presetKind)||(e.name===source.name&&e.group===source.group));
   if(!target){target=clone(source);result.events.push(target);report.events++;report.orders+=target.orders.length;continue}
+  if(target.id.startsWith('preset-')&&!target.orders.length&&target.products.every(p=>!(p.bought||0))){
+   for(const [key,value] of Object.entries(source))if(!['id','products','orders'].includes(key))target[key]=clone(value);
+  }
   const ids=new Map();for(const p of source.products){
    let existing=target.products.find(x=>x.id===p.id||(p.presetKey&&x.presetKey===p.presetKey)||(x.original===p.original&&x.series===p.series&&x.cn===p.cn));
    if(existing){ids.set(p.id,existing.id);if(!target.orders.length&&!(existing.bought||0))existing.bought=p.bought||0}
