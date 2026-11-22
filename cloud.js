@@ -51,6 +51,7 @@ async function syncNow(){
     const changed=!equal(db,remote.data);baseState=clone(remote.data);db=clone(remote.data);revision=remote.revision;lastSaved=clone(db);persist();if(changed)safeRender();status('云端已同步 · '+new Date().toLocaleTimeString());break;
    }
    const localSnapshot=clone(db),oldBase=clone(baseState),candidate=validate(merge(oldBase,localSnapshot,remote.data,'data',resolution));
+   const over=typeof quotaIssues==='function'?quotaIssues(candidate):[];if(over.length){db=clone(candidate);baseState=clone(remote.data);revision=remote.revision;dirty=true;lastSaved=clone(db);persist();safeRender();throw Error('接单上限冲突，订单已保留在本机待处理。请在商品目录提高对应上限，或修正订单数量：'+over.join('；'))}
    inflight={id:crypto.randomUUID(),revision:remote.revision,candidate,snapshot:localSnapshot};persist();
    const written=await api('/rest/v1/rpc/apply_shopping_write',{method:'POST',body:{expected_revision:inflight.revision,mutation_id:inflight.id,candidate}});
    if(!written.applied){inflight=null;persist();continue}
