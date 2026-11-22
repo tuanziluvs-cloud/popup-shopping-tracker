@@ -4,10 +4,50 @@
 <script>
 const KEY='popup-proxy-v1';let db;try{db=JSON.parse(localStorage.getItem(KEY))}catch{}if(!db||!Array.isArray(db.events))db={events:[],next:1};let current=null,tab='purchase',filter='open',basket={},query='',compact=false,editId=null;
 const $=s=>document.querySelector(s),esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),uid=()=>crypto.randomUUID?.()||String(Date.now()+Math.random()),save=()=>{try{localStorage.setItem(KEY,JSON.stringify(db));return true}catch(e){alert('保存失败：'+e.message);return false}},ev=()=>db.events.find(x=>x.id===current),qty=(e,p)=>e.orders.reduce((a,o)=>a+o.lines.filter(l=>l.id===p.id).reduce((n,l)=>n+l.q,0),0),stats=e=>{let need=e.products.reduce((a,p)=>a+qty(e,p),0),bought=e.products.reduce((a,p)=>a+(p.bought||0),0);return {need,bought,left:Math.max(0,need-bought)}};
-function render(){let a=$('#app');if(!current){let es=db.events.filter(e=>filter==='all'||(filter==='open'?!e.archived:e.archived));a.innerHTML='<div class="row"><h1>我的快闪活动</h1><button class="primary" onclick="addEvent()">＋ 新建活动</button></div><div class="tabs">'+[['open','进行中'],['closed','已归档'],['all','全部']].map(([k,n])=>'<button class="'+(filter===k?'active':'')+'" onclick="filter=\''+k+'\';render()">'+n+'</button>').join('')+'</div><div class="grid">'+(es.map(e=>{let s=stats(e);return '<div class="card click" onclick="current=\''+e.id+'\';tab=\'purchase\';render()"><h2>'+esc(e.name)+'</h2><div class="muted">'+esc(e.group||'未分类')+' · '+(e.archived?'已归档':'进行中')+'</div><p>已购 '+s.bought+' / '+s.need+' · 待购 '+s.left+'</p><div class="progress"><span style="width:'+(s.need?Math.min(100,100*s.bought/s.need):0)+'%"></span></div></div>'}).join('')||'<div class="card">还没有活动，先新建一场吧。</div>')+'</div>';return}
+function render(){let a=$('#app');if(!current){let es=db.events.filter(e=>filter==='all'||(filter==='open'?!e.archived:e.archived));a.innerHTML='<div class="row"><h1>我的快闪活动</h1><button class="primary" onclick="addEvent()">＋ 新建活动</button></div><div class="tabs">'+[['open','进行中'],['closed','已归档'],['all','全部']].map(([k,n])=>'<button class="'+(filter===k?'active':'')+'" onclick="filter=\''+k+'\';render()">'+n+'</button>').join('')+'</div><div class="card"><h2>导入官方商品目录</h2><p class="muted">一键创建独立活动，重复导入不会清空原有订单。</p><div class="row"><button onclick="importPreset(\'nmixx\')">导入 NMIXX · 20 系列</button><button onclick="importPreset(\'miniteen\')">导入 MINITEEN · 12 系列</button></div></div><div class="grid">'+(es.map(e=>{let s=stats(e);return '<div class="card click" onclick="current=\''+e.id+'\';tab=\'purchase\';render()"><h2>'+esc(e.name)+'</h2><div class="muted">'+esc(e.group||'未分类')+' · '+(e.archived?'已归档':'进行中')+'</div><p>已购 '+s.bought+' / '+s.need+' · 待购 '+s.left+'</p><div class="progress"><span style="width:'+(s.need?Math.min(100,100*s.bought/s.need):0)+'%"></span></div></div>'}).join('')||'<div class="card">还没有活动，先新建一场吧。</div>')+'</div>';return}
 let e=ev();a.innerHTML='<div class="row"><button onclick="current=null;render()">← 全部活动</button><span class="muted">'+esc(e.group)+'</span></div><h1>'+esc(e.name)+'</h1><div class="tabs">'+[['purchase','采购单'],['orders','订单'],['products','商品目录'],['settings','活动设置']].map(([k,n])=>'<button class="'+(tab===k?'active':'')+'" onclick="tab=\''+k+'\';render()">'+n+'</button>').join('')+'</div><div id="content"></div>';$('#content').innerHTML=tab==='purchase'?purchase(e):tab==='orders'?orders(e):tab==='products'?products(e):settings(e)}
+
+const PRESETS={
+nmixx:{name:'NMIXX · EP. ZERO : FRONTIER',group:'NMIXX',rows:[
+['应援棒二代装饰尾巴','NMIXX LIGHT STICK VER.2 CUSTOM TAIL',17000,'single'],
+['应援棒二代 MIXXFFY 公仔','NMIXX LIGHT STICK VER.2 CUSTOM MIXXFFY FIGURE',10000,'six'],
+['MIXXFFY 多功能环','MIXXFFY MULTI RING',35000,'six'],
+['MIXXFFY 应援棒斜挎包','MIXXFFY LIGHT STICK CROSS BAG',43000,'six'],
+['MIXXFFY 毛绒宝宝挂件','MIXXFFY PLUSH BABY Ver.',20000,'six'],
+['MIXXFFY 毛绒夹子','MIXXFFY PLUSH CLIP Ver.',26000,'six'],
+['MIXXFFY 毛绒 PVC 收纳包','MIXXFFY PLUSH PVC POUCH',30000,'six'],
+['MIXXFFY 毛绒小卡收集册','MIXXFFY PLUSH COLLECT BOOK',28000,'six'],
+['MIXXFFY 毛绒挂带夹','MIXXFFY PLUSH STRAP HOLDER',22000,'six'],
+['MIXXFFY 相框钥匙扣','MIXXFFY PHOTO FRAME KEYRING',25000,'six'],
+['MIXXFFY 随机幸运挂件','MIXXFFY SECRET LUCKY CHARM',10000,'random'],
+['MIXXFFY 随机亚克力挂件','MIXXFFY SECRET ACRYLIC PICK',6000,'random'],
+['随机小卡（每包3张）','TRADING CARD',6000,'random'],
+['铁盒套装','TINCASE SET',32000,'single'],
+['透明相框钥匙扣','CLEAR FRAME KEYRING',24000,'six'],
+['亚克力立牌','ACRYLIC STOPPER',19000,'six'],
+['T 恤','T-SHIRT',48000,'single'],
+['抓绒外套','WOOL FLEECE',110000,'single'],
+['双面手提袋','REVERSIBLE BAG',60000,'single'],
+['玻璃杯','GLASS CUP',30000,'single']]},
+miniteen:{name:'SEVENTEEN · MINITEEN Snowman',group:'SEVENTEEN',rows:[
+['抽选迷你钥匙扣','LUCKY DRAW (MINI KEYRING)',9000,'single'],
+['抽选徽章','LUCKY DRAW (CANBADGE)',6000,'single'],
+['徽章保护套','CANBADGE COVER',16000,'single'],
+['毛绒钥匙扣','PLUSH KEYRING',28000,'single'],
+['雪人钥匙扣','SNOWMAN KEYRING',28000,'single'],
+['暖手抱枕','HAND WARMER CUSHION',42000,'single'],
+['收纳包','POUCH',32000,'single'],
+['手提包','BAG',43000,'single'],
+['迷你毛绒别针','MINI PLUSH PIN',18000,'single'],
+['旋转徽章','SPINNING PIN BADGE',12000,'single'],
+['亚克力立牌套装','ACRYLIC STAND SET',32000,'single'],
+['贴纸套装','STICKER SET',10000,'single']]}
+};
+function presetProducts(kind){let members=['LILY','HAEWON','SULLYOON','BAE','JIWOO','KYUJIN'];return PRESETS[kind].rows.flatMap(([cn,original,price,type],i)=>type==='six'?members.map(m=>({id:uid(),series:cn,cn:cn+' · '+m,original,price,bought:0,photo:'',presetKey:kind+'-'+i+'-'+m})): [{id:uid(),series:cn,cn,original,price,bought:0,photo:'',presetKey:kind+'-'+i}])}
+function importPreset(kind){let preset=PRESETS[kind];if(!preset)return;let e=db.events.find(e=>e.presetKind===kind||e.name===preset.name);if(!e){e={id:uid(),name:preset.name,group:preset.group,archived:false,products:[],orders:[],presetKind:kind};db.events.unshift(e)}let existing=new Set(e.products.map(p=>p.presetKey||p.cn+'|'+p.original)),added=0;for(let p of presetProducts(kind)){if(!existing.has(p.presetKey)&&!existing.has(p.cn+'|'+p.original)){e.products.push(p);added++}}if(!save())return;current=e.id;tab='products';render();alert('已导入 '+added+' 个商品款式。原有订单和数量均已保留。'+(kind==='miniteen'?' MINITEEN 角色尚未根据清晰官图确认，暂按每个商品系列录入，可继续细分。':''))}
+
 function addEvent(){let name=prompt('快闪活动名称');if(!name?.trim())return;let group=prompt('团体标签（可留空）')||'';let e={id:uid(),name:name.trim(),group,archived:false,products:[],orders:[]};db.events.unshift(e);save();current=e.id;tab='products';render()}
-function products(e){return '<div class="card"><h2>新增商品款式</h2><p class="muted">同一系列的每位成员分别添加；纯随机商品只需一款。</p><label>系列</label><input id="series" placeholder="例如 手偶"><label>中文名称</label><input id="cn" placeholder="例如 小鸡 / 随机徽章"><label>官方原文名称（选填）</label><input id="original" placeholder="日文或英文"><label>商品图片网址（选填）</label><input id="photo" placeholder="https://..."><p><button class="primary" onclick="addProduct()">添加商品</button></p></div><div class="card"><h2>批量导入</h2><p class="muted">每行一款，格式：系列 | 中文名称 | 原文名称（可省略）</p><textarea id="batch" rows="5" style="width:100%" placeholder="手偶 | 小鸡 | Chick\n手偶 | 小兔 | Rabbit"></textarea><p><button onclick="batchAdd()">批量添加</button></p></div>'+e.products.map(p=>'<div class="item row"><div><b>'+esc(p.cn)+'</b> <span class="muted">'+esc(p.original)+'</span><div class="muted">'+esc(p.series)+'</div></div><button onclick="editProduct(\''+p.id+'\')">修改</button></div>').join('')}
+function products(e){return '<div class="card"><h2>新增商品款式</h2><p class="muted">同一系列的每位成员分别添加；纯随机商品只需一款。</p><label>系列</label><input id="series" placeholder="例如 手偶"><label>中文名称</label><input id="cn" placeholder="例如 小鸡 / 随机徽章"><label>官方原文名称（选填）</label><input id="original" placeholder="日文或英文"><label>商品图片网址（选填）</label><input id="photo" placeholder="https://..."><p><button class="primary" onclick="addProduct()">添加商品</button></p></div><div class="card"><h2>批量导入</h2><p class="muted">每行一款，格式：系列 | 中文名称 | 原文名称（可省略）</p><textarea id="batch" rows="5" style="width:100%" placeholder="手偶 | 小鸡 | Chick\n手偶 | 小兔 | Rabbit"></textarea><p><button onclick="batchAdd()">批量添加</button></p></div>'+e.products.map(p=>'<div class="item row"><div><b>'+esc(p.cn)+'</b> <span class="muted">'+esc(p.original)+'</span><div class="muted">'+esc(p.series)+(p.price?' · ₩'+p.price.toLocaleString('en-US'):'')+'</div></div><button onclick="editProduct(\''+p.id+'\')">修改</button></div>').join('')}
 function addProduct(){let cn=$('#cn').value.trim();if(!cn)return alert('请填写中文名称');ev().products.push({id:uid(),cn,series:$('#series').value.trim()||'其他',original:$('#original').value.trim(),photo:$('#photo').value.trim(),bought:0});save();render()}
 function batchAdd(){let lines=$('#batch').value.split('\n').map(x=>x.trim()).filter(Boolean);for(let l of lines){let [series,cn,original]=l.split('|').map(x=>x.trim());if(cn)ev().products.push({id:uid(),series:series||'其他',cn,original:original||'',photo:'',bought:0})}save();render()}
 function editProduct(id){let p=ev().products.find(x=>x.id===id);let cn=prompt('中文名称',p.cn);if(cn===null||!cn.trim())return;p.cn=cn.trim();p.series=prompt('系列',p.series)??p.series;p.original=prompt('官方原文名称',p.original)??p.original;p.photo=prompt('图片网址',p.photo)??p.photo;save();render()}
