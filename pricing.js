@@ -39,3 +39,11 @@ function draftLine(id,q){
  if(Object.hasOwn(basketPrices,id)&&sale===null)line.unitSaleCny=null;
  return line;
 }
+
+function renameSeries(encoded){
+ const e=ev(),previous=decodeURIComponent(encoded),next=prompt('新的品类名称（此品类全部款式一起修改）',previous);
+ if(next===null||!next.trim()||next.trim()===previous)return;
+ if(e.products.some(p=>p.series===next.trim()&&p.series!==previous))return alert('已有同名品类，请使用不同名称。');
+ for(const p of e.products)if(p.series===previous)p.series=next.trim();
+ if(save())render();
+}
