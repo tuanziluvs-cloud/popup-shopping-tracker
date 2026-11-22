@@ -57,11 +57,13 @@ function importLegacy(cloud,legacy){
 }
 function validate(data){
  if(!data||!Array.isArray(data.events))throw Error('活动数据格式错误');
+ const optionalPrice=(obj,key)=>obj[key]===undefined||obj[key]===null||(typeof obj[key]==='number'&&Number.isFinite(obj[key])&&obj[key]>=0);
  const safeId=id=>typeof id==='string'&&/^[\p{L}\p{N}_.: -]+$/u.test(id);
  const ids=new Set();for(const e of data.events){
   if(!safeId(e.id)||ids.has(e.id)||!Array.isArray(e.products)||!Array.isArray(e.orders))throw Error('活动或 ID 格式错误');ids.add(e.id);
-  const products=new Set();for(const p of e.products){if(!safeId(p.id)||products.has(p.id)||!Number.isInteger(p.bought||0)||(p.bought||0)<0)throw Error('商品或采购数量格式错误');products.add(p.id)}
-  const orders=new Set();for(const o of e.orders){if(!safeId(o.id)||orders.has(o.id)||o.number===undefined||!Number.isFinite(o.rank)||!o.name?.trim()||!Array.isArray(o.lines)||!o.lines.length)throw Error('订单格式错误');orders.add(o.id);for(const l of o.lines){if(!products.has(l.id)||!Number.isInteger(l.q)||l.q<1)throw Error('订单商品或数量格式错误')}}
+  if(!optionalPrice(e,'krwToCny'))throw Error('汇率格式错误');
+  const products=new Set();for(const p of e.products){if(!safeId(p.id)||products.has(p.id)||!Number.isInteger(p.bought||0)||(p.bought||0)<0)throw Error('商品或采购数量格式错误');if(!optionalPrice(p,'price')||!optionalPrice(p,'salePriceCny'))throw Error('商品价格格式错误');products.add(p.id)}
+  const orders=new Set();for(const o of e.orders){if(!safeId(o.id)||orders.has(o.id)||o.number===undefined||!Number.isFinite(o.rank)||!o.name?.trim()||!Array.isArray(o.lines)||!o.lines.length)throw Error('订单格式错误');orders.add(o.id);for(const l of o.lines){if(!products.has(l.id)||!Number.isInteger(l.q)||l.q<1)throw Error('订单商品或数量格式错误');if(!optionalPrice(l,'unitCostKrw')||!optionalPrice(l,'unitSaleCny'))throw Error('订单价格格式错误')}}
  }return data;
 }
 const api={clone,equal,merge,importLegacy,validate};root.SyncCore=api;if(typeof module!=='undefined')module.exports=api;

@@ -22,7 +22,7 @@ function app(id,initial){
   else{state={data:clone(body.candidate),revision:state.revision+1};result={applied:true,revision:state.revision};receipts.set(body.mutation_id,result);if(drop){drop=false;throw Error('response lost')}}
  }else throw Error('Unexpected request '+path);
  return {ok:true,status:200,text:async()=>JSON.stringify(result)};
- }});ctx.window=ctx;vm.runInContext(html.split('<script>')[1].split('</script>')[0],ctx);vm.runInContext(core,ctx);vm.runInContext(cloud,ctx);
+ }});ctx.window=ctx;vm.runInContext(html.split('<script>')[1].split('</script>')[0],ctx);vm.runInContext(core,ctx);vm.runInContext(fs.readFileSync(__dirname+'/../finance-core.js','utf8'),ctx);vm.runInContext(fs.readFileSync(__dirname+'/../pricing.js','utf8'),ctx);vm.runInContext(cloud,ctx);
  return {ctx,storage,run:s=>vm.runInContext(s,ctx),element};
 }
 async function idle(a){for(let i=0;i<300;i++){if(a.run('cloudReady&&!syncBusy&&!dirty&&!inflight'))return;await new Promise(r=>setTimeout(r,5))}throw Error('Not idle: '+a.run('syncMessage'))}
@@ -49,5 +49,13 @@ async function idle(a){for(let i=0;i<300;i++){if(a.run('cloudReady&&!syncBusy&&!
  for(const kind of ['nmixx','miniteen']){
   const e=a.run('db.events.find(e=>e.presetKind===\''+kind+'\')');const imgs=new Set(e.products.map(p=>a.run('seriesImage('+JSON.stringify(e)+','+JSON.stringify(p)+')')));assert.equal(imgs.size,kind==='nmixx'?20:12);for(const img of imgs)assert.ok(fs.existsSync(__dirname+'/../'+img));
  }
- console.log(JSON.stringify({passed:true,transport:'simulated; real SQL tests recorded separately',checks:['new multi-item order, empty basket','order edit preserves number and creation time','same customer multiple orders','queue reversal and first-come allocation','minus leaves orders intact','two independent application contexts','identical concurrent increments','lost-response idempotency','offline reload preserves pending write','legacy merge preserves IDs/rank and deduplicates','same-field conflict and resolution','32 series image paths','75 NMIXX variants and 84 MINITEEN variants'],httpCalls:calls},null,2));
+ // Pricing fields use the same existing durable sync, including order price snapshots.
+ await reloaded.run('syncNow()');await b.run('syncNow()');
+ reloaded.run("current=db.events[0].id;ev().krwToCny=.005;ev().products[0].salePriceCny=120;save()");await idle(reloaded);await b.run('syncNow()');assert.equal(b.run('db.events[0].krwToCny'),.005);assert.equal(b.run('db.events[0].products[0].salePriceCny'),120);
+ reloaded.run("editId=null;basketPrices={};basket={[ev().products[0].id]:2};render()");reloaded.element('customer').value='单价锁定测试';reloaded.run('submitOrder()');await idle(reloaded);assert.equal(reloaded.run('ev().orders.at(-1).lines[0].unitSaleCny'),120);
+ reloaded.run('ev().products[0].salePriceCny=999;save()');await idle(reloaded);assert.equal(reloaded.run('Finance.prices(ev().products[0],ev().orders.at(-1).lines[0]).sale'),120);
+ await b.run('syncNow()');assert.equal(b.run('db.events[0].orders.at(-1).lines[0].unitSaleCny'),120);
+ assert.ok(reloaded.run('income(ev()).includes("预计差价")'));
+ const miniContext=reloaded.run("db.events.find(e=>e.presetKind==='miniteen')");const roles=reloaded.run("orderedProducts(db.events.find(e=>e.presetKind==='miniteen')).filter(p=>p.original==='PLUSH KEYRING').map(p=>Finance.variantNumber(p))");assert.deepEqual(Array.from(roles),Array.from({length:13},(_,i)=>i+1));
+ console.log(JSON.stringify({passed:true,transport:'simulated; real SQL tests recorded separately',checks:['new multi-item order, empty basket','order edit preserves number and creation time','same customer multiple orders','queue reversal and first-come allocation','minus leaves orders intact','two independent application contexts','identical concurrent increments','lost-response idempotency','offline reload preserves pending write','legacy merge preserves IDs/rank and deduplicates','same-field conflict and resolution','32 series image paths','75 NMIXX variants and 84 MINITEEN variants','FX and catalogue prices synchronize','order price snapshots stay fixed','MINITEEN roles sort 1 to 13'],httpCalls:calls},null,2));
 })().catch(e=>{console.error(e);process.exitCode=1});

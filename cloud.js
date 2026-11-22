@@ -72,7 +72,7 @@ function safeRender(){
 }
 function resolveConflict(choice){resolution=choice;conflict=false;void syncNow()}
 async function loadAccount(){
- await claimAccount();cloudReady=false;current=null;basket={};editId=null;draftName='';status('正在加载云端…');
+ await claimAccount();cloudReady=false;current=null;basket={};basketPrices={};editId=null;draftName='';status('正在加载云端…');
  cacheKey='popup-cloud-v2:'+session.user.id;
  let cached;try{cached=JSON.parse(localStorage.getItem(cacheKey))}catch{}
  if(cached&&!ownsAccount)cached={...cached,data:cached.base,dirty:false,inflight:null};
@@ -80,6 +80,7 @@ async function loadAccount(){
  else{db={events:[],next:1};baseState=clone(db);dirty=false;revision=0;inflight=null}
  lastSaved=clone(db);render();cloudReady=true;await syncNow();
  if(ownsAccount&&!db.events.length&&!dirty&&!syncMessage.startsWith('同步失败')){seedCatalogs();cloudSave();await syncNow()}
+ if(ownsAccount){let upgraded=false;for(const e of db.events)upgraded=upgradeMiniteen(e)||upgraded;if(upgraded){cloudSave();await syncNow()}}
  migrationPending=ownsAccount&&!!legacyRaw&&!localStorage.getItem('popup-migrated-v2:'+session.user.id+':'+await hash(legacyRaw));syncPanel();render();
 }
 function seedCatalogs(){for(const kind of ['nmixx','miniteen']){if(db.events.some(e=>e.presetKind===kind))continue;const preset=PRESETS[kind];db.events.push({id:'preset-'+kind,name:preset.name,group:preset.group,archived:false,presetKind:kind,products:presetProducts(kind).map(p=>({...p,id:p.presetKey})),orders:[]})}}
@@ -113,7 +114,7 @@ async function authenticate(signup){
  }catch(err){msg.textContent=err.message}
 }
 async function confirmEmail(){try{const url=new URL(document.getElementById('confirm-link').value),token=url.searchParams.get('token'),type=url.searchParams.get('type');if(!['signup','email'].includes(type)||!token||url.origin!==SB_URL)throw Error('请粘贴本项目发送的完整邮箱确认链接');const r=await api('/auth/v1/verify',{method:'POST',auth:false,body:{token_hash:token,type}});storeSession(r);document.getElementById('account').classList.add('hide');await loadAccount()}catch(err){document.getElementById('auth-message').textContent=err.message}}
-async function signOut(){if(dirty||syncBusy||conflict)return alert('还有尚未同步的数据，请先完成同步并导出备份。');try{await api('/auth/v1/logout',{method:'POST'})}catch{}storeSession(null);if(releaseAccount){releaseAccount();releaseAccount=null}ownsAccount=true;cacheKey=null;cloudReady=false;db=clone(legacyData);lastSaved=clone(db);current=null;basket={};editId=null;draftName='';migrationPending=false;document.getElementById('account').classList.add('hide');status('本机保存 · 已退出登录');render()}
+async function signOut(){if(dirty||syncBusy||conflict)return alert('还有尚未同步的数据，请先完成同步并导出备份。');try{await api('/auth/v1/logout',{method:'POST'})}catch{}storeSession(null);if(releaseAccount){releaseAccount();releaseAccount=null}ownsAccount=true;cacheKey=null;cloudReady=false;db=clone(legacyData);lastSaved=clone(db);current=null;basket={};basketPrices={};editId=null;draftName='';migrationPending=false;document.getElementById('account').classList.add('hide');status('本机保存 · 已退出登录');render()}
 async function bootCloud(){
  try{
   const fragment=new URLSearchParams(location.hash.slice(1));
