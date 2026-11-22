@@ -101,8 +101,22 @@ async function migrateLocal(){
 }
 function showAccount(){
  const box=document.getElementById('account');box.classList.toggle('hide');if(box.classList.contains('hide'))return;
- box.innerHTML=session?'<h2>云端账户</h2><p>'+esc(session.user.email)+'</p><p>'+esc(syncMessage)+'</p><button onclick="syncNow()">立即同步</button> <button onclick="signOut()">退出登录</button>':
+ box.innerHTML=session?'<h2>云端账户</h2><p>'+esc(session.user.email)+'</p><p>'+esc(syncMessage)+'</p><button onclick="syncNow()">立即同步</button> <button onclick="signOut()">退出登录</button><details><summary>修改账户密码</summary><label for="current-password">当前密码</label><input id="current-password" type="password" autocomplete="current-password"><label for="new-password">新密码（至少 8 位）</label><input id="new-password" type="password" autocomplete="new-password" minlength="8"><label for="repeat-password">再次输入新密码</label><input id="repeat-password" type="password" autocomplete="new-password"><p><button id="change-password" onclick="changePassword()">保存新密码</button></p><p id="password-message" role="status"></p></details>':
  '<h2>登录云同步</h2><p class="muted">电脑和手机使用同一个邮箱账户。每个账户的数据独立且受权限保护。</p><label for="email">邮箱</label><input id="email" type="email" autocomplete="username"><label for="password">密码（至少 8 位）</label><input id="password" type="password" autocomplete="current-password" minlength="8"><p><button class="primary" onclick="authenticate(false)">登录</button> <button onclick="authenticate(true)">注册</button></p><p id="auth-message" role="status"></p><p class="muted">已点击邮件中的确认按钮？请直接在上方输入邮箱和密码并点“登录”。</p><details><summary>备用：用确认邮件链接验证</summary><p class="muted">仅在无法打开确认邮件链接时使用。这里需要邮件中确认按钮的完整 https:// 链接，不能填写邮箱地址。</p><label for="confirm-link">确认邮件中的完整链接</label><input id="confirm-link" type="url" inputmode="url" autocomplete="off" placeholder="https://…/auth/v1/verify?token=…"><button onclick="confirmEmail()">验证确认链接</button></details>';
+}
+async function changePassword(){
+ const msg=document.getElementById('password-message'),button=document.getElementById('change-password');
+ if(!session){msg.textContent='请先登录账户。';return}
+ const old=document.getElementById('current-password'),first=document.getElementById('new-password'),second=document.getElementById('repeat-password');
+ if(!old.value){msg.textContent='请输入当前密码。';return}
+ if(first.value.length<8){msg.textContent='新密码至少需要 8 位。';return}
+ if(first.value!==second.value){msg.textContent='两次输入的新密码不一致。';return}
+ button.disabled=true;msg.textContent='正在修改…';
+ try{
+  await api('/auth/v1/user',{method:'PUT',body:{password:first.value,current_password:old.value}});
+  old.value='';first.value='';second.value='';msg.textContent='密码已修改。其他设备下次登录请使用新密码。';
+ }catch(err){msg.textContent=/reauthentication|nonce/i.test(err.message)?'请先同步完成，再退出并重新登录后修改密码。':authErrorMessage(err)}
+ finally{button.disabled=false}
 }
 async function authenticate(signup){
  const msg=document.getElementById('auth-message'),email=document.getElementById('email').value.trim(),password=document.getElementById('password').value;
