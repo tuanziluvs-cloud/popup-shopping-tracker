@@ -35,7 +35,7 @@ function importLegacy(cloud,legacy){
   const ids=new Map();for(const p of source.products){
    let existing=target.products.find(x=>x.id===p.id||(p.presetKey&&x.presetKey===p.presetKey)||(x.original===p.original&&x.series===p.series&&x.cn===p.cn));
    if(existing){ids.set(p.id,existing.id);if(!target.orders.length&&!(existing.bought||0))existing.bought=p.bought||0}
-   else{const item=clone(p);if(/^miniteen-(2|3|4|5|8|9)$/.test(item.presetKey||''))item.cn+=' · 款式待确认（旧版）';target.products.push(item);ids.set(p.id,p.id);report.products++}
+   else{const item=clone(p);if(/^miniteen-(2|3|4|5|8|9)$/.test(item.presetKey||'')&&!item.cn.includes('旧版'))item.cn+=' · 款式待确认（旧版）';target.products.push(item);ids.set(p.id,p.id);report.products++}
   }
   for(const order of source.orders){
    const o=clone(order);o.lines=o.lines.map(l=>({...l,id:ids.get(l.id)||l.id}));

@@ -40,3 +40,5 @@ node tests/app-simulation.cjs
 可选 `tests/browser.cjs` 供具有 Playwright 和 Chromium 的环境运行（`CHROMIUM_PATH` 可设置路径）；当前执行环境禁止启动 Chromium 所需的本地 socket，因此此脚本未在本环境完成，不能视为已通过。
 
 仍需由账户所有人在网页完成邮箱注册/确认及首次本机迁移，再以手机和电脑的真实登录状态核验。现有浏览器的私有数据无法由 GitHub 插件读取。
+
+线上人工浏览器检查已通过：32 张官图加载，340 CSS px 窄屏目录和订单录入无横向溢出，购物篮加减正常，按钮尺寸至少 44px。完整自动化浏览器脚本仍受上述运行环境限制。
