@@ -47,3 +47,22 @@ function renameSeries(encoded){
  for(const p of e.products)if(p.series===previous)p.series=next.trim();
  if(save())render();
 }
+
+function bulkRenameProducts(encoded){
+ const series=decodeURIComponent(encoded),e=ev(),targets=e.products.filter(p=>p.series===series);
+ if(!targets.length)return;
+ const input=prompt('填写统一商品名称，例如“棒包”。各款会保留成员或编号，生成“棒包·lily”“棒包·haewon”等名称。',series);
+ if(input===null||!input.trim())return;
+ const base=input.trim();
+ const changes=targets.map(p=>{
+  const n=Finance.variantNumber(p);
+  let suffix=Number.isFinite(n)?n+'号':String(p.variant||'').trim();
+  if(!suffix){const parts=String(p.cn||'').split(/[·•]/);if(parts.length>1)suffix=parts.slice(1).join('·').trim()}
+  if(legacyUnspecified(p))suffix=suffix||'款式待确认（旧版）';
+  if(/^(LILY|HAEWON|SULLYOON|BAE|JIWOO|KYUJIN)$/i.test(suffix))suffix=suffix.toLowerCase();
+  return {p,name:base+(suffix?'·'+suffix:'')};
+ });
+ if(!confirm('将修改 '+changes.length+' 个商品名称：\n'+changes.slice(0,6).map(x=>x.name).join('\n')+(changes.length>6?'\n……':'')+'\n确认保存？'))return;
+ for(const {p,name} of changes)p.cn=name;
+ if(save())render();
+}
