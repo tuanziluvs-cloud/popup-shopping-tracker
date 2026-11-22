@@ -32,7 +32,7 @@ function basketSale(id){return Object.hasOwn(basketPrices,id)?basketPrices[id]:e
 function setBasketSale(id,value){basketPrices[id]=value.trim()===''?null:Number(value)}
 function draftLine(id,q){
  const p=ev().products.find(p=>p.id===id),old=editId?ev().orders.find(o=>o.id===editId)?.lines.find(l=>l.id===id):null;
- const line={id,q};const cost=old&&Object.hasOwn(old,'unitCostKrw')?old.unitCostKrw:p?.price,sale=basketSale(id);
+ const line={id,q};if(old?.checkedQuantity===q&&old.q===q)line.checkedQuantity=q;const cost=old&&Object.hasOwn(old,'unitCostKrw')?old.unitCostKrw:p?.price,sale=basketSale(id);
  if(Finance.known(cost))line.unitCostKrw=cost;
  if(Finance.known(sale))line.unitSaleCny=sale;
  // Explicitly clearing a previously saved price must not silently fall back to the catalogue.
@@ -51,9 +51,9 @@ function renameSeries(encoded){
 function bulkRenameProducts(encoded){
  const series=decodeURIComponent(encoded),e=ev(),targets=e.products.filter(p=>p.series===series);
  if(!targets.length)return;
- const input=prompt('填写统一商品名称，例如“棒包”。各款会保留成员或编号，生成“棒包·lily”“棒包·haewon”等名称。',series);
+ const input=prompt('填写新名称，例如“棒包”。同时修改品类标题和该品类各款商品名，成员或编号保留。',series);
  if(input===null||!input.trim())return;
- const base=input.trim();
+ const base=input.trim();if(e.products.some(p=>p.series===base&&p.series!==series))return alert('已有同名品类，请使用不同名称。');
  const changes=targets.map(p=>{
   const n=Finance.variantNumber(p);
   let suffix=Number.isFinite(n)?n+'号':String(p.variant||'').trim();
@@ -63,6 +63,6 @@ function bulkRenameProducts(encoded){
   return {p,name:base+(suffix?'·'+suffix:'')};
  });
  if(!confirm('将修改 '+changes.length+' 个商品名称：\n'+changes.slice(0,6).map(x=>x.name).join('\n')+(changes.length>6?'\n……':'')+'\n确认保存？'))return;
- for(const {p,name} of changes)p.cn=name;
+ for(const {p,name} of changes){p.cn=name;p.series=base}
  if(save())render();
 }
