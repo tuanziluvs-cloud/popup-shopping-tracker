@@ -13,10 +13,11 @@ function orderBonusSummary(e,orders){
  if(cloudKind(e)!=='nmixx')return '';
  const total=orders.reduce((sum,o)=>{
   const b=bonusForOrder(e,o);
-  sum.krw+=b.krw;sum.count+=b.count;sum.missing+=b.missing;sum.estimated=sum.estimated||b.estimated;
+  sum.krw+=b.krw;sum.missing+=b.missing;sum.estimated=sum.estimated||b.estimated;
   return sum;
  },{krw:0,count:0,missing:0,estimated:false});
- return '<div class="card"><h2>订单总额</h2><p><b>₩'+total.krw.toLocaleString('en-US')+'</b></p><p>满额卡合计：<b>'+total.count+' 张</b>'+(total.missing?'（待补全）':'')+'</p><p class="muted">按每单韩元商品原价计算，每满 ₩50,000 赠 1 张，再汇总卡数。'+(total.missing?' '+total.missing+' 件缺少原价，金额与卡数待补全核算。':'')+(total.estimated?' 未锁定原价的旧订单按当前目录估算。':'')+'</p></div>';
+ total.count=Math.floor(total.krw/50000);
+ return '<div class="card"><h2>订单总额</h2><p><b>₩'+total.krw.toLocaleString('en-US')+'</b></p><p>满额卡合计：<b>'+total.count+' 张</b>'+(total.missing?'（待补全）':'')+'</p><p class="muted">按全部订单的韩元商品原价总额计算，每满 ₩50,000 赠 1 张（总额 ÷ 50,000，向下取整）。'+(total.missing?' '+total.missing+' 件缺少原价，金额与卡数待补全核算。':'')+(total.estimated?' 未锁定原价的旧订单按当前目录估算。':'')+'</p></div>';
 }
 function shortOrderNumber(o){const n=String(o.number);return /^P-[0-9A-F-]{36}$/i.test(n)?n.slice(0,10):n}
 function checkOrderLine(orderId,productId,checked){
